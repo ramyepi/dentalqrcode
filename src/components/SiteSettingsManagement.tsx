@@ -11,7 +11,6 @@ import { Save, Settings } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { useClinicData } from '@/hooks/useClinicData';
 import { Switch } from '@/components/ui/switch';
-import { updateSupabaseConfig } from '@/integrations/supabase/client';
 
 // Custom hook to manage data source preference
 function useDataSourcePreference() {
@@ -172,7 +171,7 @@ const SiteSettingsManagement: React.FC = () => {
   const handleSaveSupabase = async () => {
     setSavingSupabase(true);
     try {
-      updateSupabaseConfig(supabaseUrl, supabaseKey);
+      // updateSupabaseConfig(supabaseUrl, supabaseKey); // Removed
       localStorage.setItem('supabase_url', supabaseUrl);
       localStorage.setItem('supabase_key', supabaseKey);
       toast({ title: 'تم تحديث إعدادات Supabase', description: 'تم الاتصال بمشروع Supabase الجديد بنجاح' });
