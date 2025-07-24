@@ -128,8 +128,6 @@ const ClinicForm: React.FC<ClinicFormProps> = ({
       ...data,
       governorate: gov?.name || '',
       city: city?.name || '',
-      governorate_id: gov?.id || '',
-      city_id: city?.id || '',
       address: fullAddress
     };
     console.log('Form submitted with data:', submissionData);

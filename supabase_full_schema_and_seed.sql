@@ -1,137 +1,137 @@
--- 1. USERS & PROFILES TABLES (Supabase manages auth.users, you manage profiles)
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  username text unique,
+-- SUPABASE FULL SCHEMA AND SEED
+
+-- 1. profiles table (with role)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text UNIQUE,
   full_name text,
-  avatar_url text,
-  website text,
-  role text default 'user',
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  role text DEFAULT 'user',
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
-alter table profiles enable row level security;
-drop policy if exists "Allow individual read access" on profiles;
-drop policy if exists "Allow individual update access" on profiles;
-drop policy if exists "Allow admin read access" on profiles;
-create policy "Allow individual read access" on profiles for select using (auth.uid() = id);
-create policy "Allow individual update access" on profiles for update using (auth.uid() = id);
-create policy "Allow admin read access" on profiles for select using (role = 'admin');
-
--- 2. GOVERNORATES TABLE
-create table if not exists governorates (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  created_at timestamp with time zone default now()
+-- 2. governorates table
+CREATE TABLE IF NOT EXISTS public.governorates (
+  id serial PRIMARY KEY,
+  name_ar text NOT NULL,
+  name_en text NOT NULL
 );
-alter table governorates enable row level security;
-drop policy if exists "Allow anon select" on governorates;
-create policy "Allow anon select" on governorates for select using (true);
 
--- 3. CITIES TABLE
-create table if not exists cities (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  governorate_id uuid references governorates(id) on delete set null,
-  created_at timestamp with time zone default now()
+-- 3. cities table
+CREATE TABLE IF NOT EXISTS public.cities (
+  id serial PRIMARY KEY,
+  name_ar text NOT NULL,
+  name_en text NOT NULL,
+  governorate_id integer REFERENCES public.governorates(id)
 );
-alter table cities enable row level security;
-drop policy if exists "Allow anon select" on cities;
-create policy "Allow anon select" on cities for select using (true);
 
--- 4. SPECIALIZATIONS TABLE
-create table if not exists specializations (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  is_active boolean default true,
-  sort_order integer default 0,
-  created_at timestamp with time zone default now()
+-- 4. specializations table
+CREATE TABLE IF NOT EXISTS public.specializations (
+  id serial PRIMARY KEY,
+  name_ar text NOT NULL,
+  name_en text NOT NULL,
+  sort_order integer DEFAULT 0,
+  is_active boolean DEFAULT true
 );
-alter table specializations enable row level security;
-drop policy if exists "Allow anon select" on specializations;
-drop policy if exists "Allow anon insert" on specializations;
-drop policy if exists "Allow anon update" on specializations;
-drop policy if exists "Allow anon delete" on specializations;
-create policy "Allow anon select" on specializations for select using (true);
-create policy "Allow anon insert" on specializations for insert with check (true);
-create policy "Allow anon update" on specializations for update using (true);
-create policy "Allow anon delete" on specializations for delete using (true);
 
--- 5. CLINICS TABLE
-create table if not exists clinics (
-  id uuid primary key default uuid_generate_v4(),
-  clinic_name text not null,
-  license_number text not null,
-  doctor_name text,
-  specialization text not null,
-  license_status text not null,
-  phone text,
-  governorate text not null,
-  city text not null,
-  address_details text,
+-- 5. clinics table
+CREATE TABLE IF NOT EXISTS public.clinics (
+  id serial PRIMARY KEY,
+  name_ar text NOT NULL,
+  name_en text NOT NULL,
+  license_number text UNIQUE NOT NULL,
+  specialization_id integer REFERENCES public.specializations(id),
+  governorate_id integer REFERENCES public.governorates(id),
+  city_id integer REFERENCES public.cities(id),
   address text,
-  issue_date date,
-  expiry_date date,
-  verification_count integer default 0,
-  qr_code text,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  phone text,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
-alter table clinics enable row level security;
-drop policy if exists "Allow anon select" on clinics;
-drop policy if exists "Allow anon insert" on clinics;
-drop policy if exists "Allow anon update" on clinics;
-drop policy if exists "Allow anon delete" on clinics;
-create policy "Allow anon select" on clinics for select using (true);
-create policy "Allow anon insert" on clinics for insert with check (true);
-create policy "Allow anon update" on clinics for update using (true);
-create policy "Allow anon delete" on clinics for delete using (true);
 
--- 6. SITE SETTINGS TABLE
-create table if not exists site_settings (
-  key text primary key,
+-- 6. site_settings table
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  id serial PRIMARY KEY,
+  key text UNIQUE NOT NULL,
   value text,
-  description text
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
-alter table site_settings enable row level security;
-drop policy if exists "Allow anon select" on site_settings;
-drop policy if exists "Allow anon update" on site_settings;
-create policy "Allow anon select" on site_settings for select using (true);
-create policy "Allow anon update" on site_settings for update using (true);
 
--- 7. SAMPLE DATA (governorates, cities, specializations)
-insert into governorates (id, name, created_at) values
-  (uuid_generate_v4(), 'عمان', now()),
-  (uuid_generate_v4(), 'إربد', now()),
-  (uuid_generate_v4(), 'الزرقاء', now()),
-  (uuid_generate_v4(), 'العقبة', now()),
-  (uuid_generate_v4(), 'المفرق', now()),
-  (uuid_generate_v4(), 'البلقاء', now()),
-  (uuid_generate_v4(), 'جرش', now()),
-  (uuid_generate_v4(), 'عجلون', now()),
-  (uuid_generate_v4(), 'مأدبا', now()),
-  (uuid_generate_v4(), 'الطفيلة', now()),
-  (uuid_generate_v4(), 'الكرك', now()),
-  (uuid_generate_v4(), 'معان', now())
-on conflict do nothing;
+-- Enable RLS and policies for all tables
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.governorates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.specializations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clinics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 
-insert into specializations (id, name, is_active, sort_order, created_at) values
-  (uuid_generate_v4(), 'طب أسنان عام', true, 1, now()),
-  (uuid_generate_v4(), 'تقويم الأسنان', true, 2, now()),
-  (uuid_generate_v4(), 'جراحة الفم والفكين', true, 3, now()),
-  (uuid_generate_v4(), 'علاج جذور الأسنان', true, 4, now()),
-  (uuid_generate_v4(), 'طب أسنان الأطفال', true, 5, now()),
-  (uuid_generate_v4(), 'تركيبات الأسنان', true, 6, now()),
-  (uuid_generate_v4(), 'أمراض اللثة', true, 7, now()),
-  (uuid_generate_v4(), 'أشعة الفم والأسنان', true, 8, now())
-on conflict do nothing;
+-- Drop old policies if they exist and create new ones
+-- profiles
+DROP POLICY IF EXISTS "Allow all select" ON public.profiles;
+CREATE POLICY "Allow all select" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all insert" ON public.profiles;
+CREATE POLICY "Allow all insert" ON public.profiles FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all update" ON public.profiles;
+CREATE POLICY "Allow all update" ON public.profiles FOR UPDATE USING (true);
 
--- ملاحظة: لإضافة بيانات المدن، يجب أن تربط كل مدينة بـ governorate_id الصحيح من جدول المحافظات.
--- مثال (أضف المزيد حسب الحاجة):
-insert into cities (id, name, governorate_id, created_at)
-select uuid_generate_v4(), 'عمان', g.id, now() from governorates g where g.name = 'عمان'
-on conflict do nothing;
+-- governorates
+DROP POLICY IF EXISTS "Allow all select" ON public.governorates;
+CREATE POLICY "Allow all select" ON public.governorates FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all insert" ON public.governorates;
+CREATE POLICY "Allow all insert" ON public.governorates FOR INSERT WITH CHECK (true);
 
--- 8. (اختياري) إضافة مستخدم admin يدويًا:
--- يجب إنشاء المستخدم من خلال واجهة Supabase Auth أو التطبيق، ثم تحديث role في profiles:
--- update profiles set role = 'admin' where id = '<USER_ID>'; 
+-- cities
+DROP POLICY IF EXISTS "Allow all select" ON public.cities;
+CREATE POLICY "Allow all select" ON public.cities FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all insert" ON public.cities;
+CREATE POLICY "Allow all insert" ON public.cities FOR INSERT WITH CHECK (true);
+
+-- specializations
+DROP POLICY IF EXISTS "Allow all select" ON public.specializations;
+CREATE POLICY "Allow all select" ON public.specializations FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all insert" ON public.specializations;
+CREATE POLICY "Allow all insert" ON public.specializations FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all update" ON public.specializations;
+CREATE POLICY "Allow all update" ON public.specializations FOR UPDATE USING (true);
+
+-- clinics
+DROP POLICY IF EXISTS "Allow all select" ON public.clinics;
+CREATE POLICY "Allow all select" ON public.clinics FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all insert" ON public.clinics;
+CREATE POLICY "Allow all insert" ON public.clinics FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all update" ON public.clinics;
+CREATE POLICY "Allow all update" ON public.clinics FOR UPDATE USING (true);
+
+-- site_settings
+DROP POLICY IF EXISTS "Allow all select" ON public.site_settings;
+CREATE POLICY "Allow all select" ON public.site_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow all insert" ON public.site_settings;
+CREATE POLICY "Allow all insert" ON public.site_settings FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all update" ON public.site_settings;
+CREATE POLICY "Allow all update" ON public.site_settings FOR UPDATE USING (true);
+
+-- Sample data for governorates
+INSERT INTO public.governorates (name_ar, name_en) VALUES
+('عمان', 'Amman'),
+('إربد', 'Irbid'),
+('الزرقاء', 'Zarqa')
+ON CONFLICT DO NOTHING;
+
+-- Sample data for cities
+INSERT INTO public.cities (name_ar, name_en, governorate_id) VALUES
+('عمان', 'Amman', 1),
+('إربد', 'Irbid', 2),
+('الزرقاء', 'Zarqa', 3)
+ON CONFLICT DO NOTHING;
+
+-- Sample data for specializations
+INSERT INTO public.specializations (name_ar, name_en, sort_order) VALUES
+('أسنان عام', 'General Dentistry', 1),
+('تقويم الأسنان', 'Orthodontics', 2),
+('جراحة الفم', 'Oral Surgery', 3)
+ON CONFLICT DO NOTHING;
+
+-- Sample site settings
+INSERT INTO public.site_settings (key, value) VALUES
+('site_name', 'Dental QR Code'),
+('theme', 'light')
+ON CONFLICT DO NOTHING; 

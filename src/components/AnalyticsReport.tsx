@@ -14,8 +14,8 @@ const AnalyticsReport: React.FC = () => {
   useEffect(() => {
     const fetchGovernorates = async () => {
       // Always fetch from Supabase
-      const { data, error } = await supabase.from('governorates').select('*');
-      setGovernorates(data || []);
+        const { data, error } = await supabase.from('governorates').select('*');
+        setGovernorates(data || []);
     };
     fetchGovernorates();
   }, []);

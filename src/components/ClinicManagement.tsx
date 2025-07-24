@@ -75,10 +75,10 @@ const ClinicManagement: React.FC = () => {
   // تحميل المحافظات والمدن من نفس مصدر البيانات
   useEffect(() => {
     const fetchGovsAndCities = async () => {
-      const { data: govs } = await supabase.from('governorates').select('*');
-      setGovernorates(govs || []);
-      const { data: cts } = await supabase.from('cities').select('*');
-      setCities(cts || []);
+        const { data: govs } = await supabase.from('governorates').select('*');
+        setGovernorates(govs || []);
+        const { data: cts } = await supabase.from('cities').select('*');
+        setCities(cts || []);
     };
     fetchGovsAndCities();
   }, []);
@@ -165,8 +165,8 @@ const ClinicManagement: React.FC = () => {
 
   const handleClearAll = async () => {
     try {
-      await Promise.all(clinics.map(c => deleteClinic(c.id)));
-      toast({ title: 'تم مسح جميع العيادات (سحابي)', description: 'تم حذف جميع العيادات من Supabase.' });
+        await Promise.all(clinics.map(c => deleteClinic(c.id)));
+        toast({ title: 'تم مسح جميع العيادات (سحابي)', description: 'تم حذف جميع العيادات من Supabase.' });
     } catch (error) {
       toast({ title: 'خطأ في المسح', description: 'حدث خطأ أثناء مسح جميع العيادات', variant: 'destructive' });
       console.error('Error clearing all clinics:', error);

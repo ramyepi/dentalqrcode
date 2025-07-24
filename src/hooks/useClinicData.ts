@@ -30,26 +30,26 @@ export const useClinicData = () => {
 
   // Real-time updates from Supabase
   useEffect(() => {
-    const channel = supabase
-      .channel('clinics-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'clinics'
-        },
-        async (payload) => {
-          queryClient.invalidateQueries({ queryKey: ["clinics"] });
-          if (payload.eventType === 'INSERT') {
-            toast({ title: "عيادة جديدة", description: "تم إضافة عيادة جديدة" });
-          } else if (payload.eventType === 'UPDATE') {
-            toast({ title: "تحديث عيادة", description: "تم تحديث بيانات عيادة" });
+      const channel = supabase
+        .channel('clinics-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'clinics'
+          },
+          async (payload) => {
+            queryClient.invalidateQueries({ queryKey: ["clinics"] });
+            if (payload.eventType === 'INSERT') {
+              toast({ title: "عيادة جديدة", description: "تم إضافة عيادة جديدة" });
+            } else if (payload.eventType === 'UPDATE') {
+              toast({ title: "تحديث عيادة", description: "تم تحديث بيانات عيادة" });
+            }
           }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+        )
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
   }, [queryClient, toast]);
 
   // --- CRUD Operations ---
@@ -99,8 +99,8 @@ export const useVerifyLicense = () => {
     let clinic = null;
     let verificationStatus: 'success' | 'failed' | 'not_found' = 'not_found';
 
-    // البحث في Supabase
-    const { data, error } = await supabase
+      // البحث في Supabase
+      const { data, error } = await supabase
       .from("clinics")
       .select("*")
       .eq("license_number", normalizedLicense);
@@ -117,14 +117,14 @@ export const useVerifyLicense = () => {
     // تسجيل محاولة التحقق (دائماً في السحابة)
     try {
       await supabase
-        .from("verifications")
-        .insert({
-          clinic_id: clinic?.id,
+      .from("verifications")
+      .insert({
+        clinic_id: clinic?.id,
           license_number: normalizedLicense,
-          verification_method: method,
-          verification_status: verificationStatus,
-          user_agent: navigator.userAgent,
-        });
+        verification_method: method,
+        verification_status: verificationStatus,
+        user_agent: navigator.userAgent,
+      });
     } catch (e) {}
 
     const typedClinic = clinic ? {
