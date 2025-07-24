@@ -71,3 +71,14 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Supabase Integration Setup (Permanent, One-Click)
+
+1. Create a `.env` file in your project root with:
+   ```
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
+2. For Vercel/Render, add these as Environment Variables in the dashboard.
+3. No need to configure Supabase from the UI or database. The app will always use these credentials.
+4. To switch projects, just update the environment variables and redeploy.
