@@ -5,11 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useClinicData } from '@/hooks/useClinicData';
 import { Building2, AlertTriangle, CheckCircle, Clock, MapPin, Stethoscope, TrendingUp, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { localDb } from '@/lib/localDb';
 import { supabase } from '@/integrations/supabase/client';
-
-const isLocalDb = () => localStorage.getItem('useLocalDb') === 'true';
-const isMySQL = () => localStorage.getItem('useMySQL') === 'true';
 
 const AnalyticsReport: React.FC = () => {
   const { data: clinics = [], isLoading, error } = useClinicData();
@@ -17,26 +13,9 @@ const AnalyticsReport: React.FC = () => {
   const [selectedGov, setSelectedGov] = useState<string>('all');
   useEffect(() => {
     const fetchGovernorates = async () => {
-      if (isLocalDb()) {
-        setGovernorates(await localDb.governorates.toArray());
-      } else if (isMySQL()) {
-        // جلب المحافظات من MySQL API إذا كان مدعوماً
-        const config = {
-          host: localStorage.getItem('mysql_host') || 'localhost',
-          port: localStorage.getItem('mysql_port') || '3306',
-          database: localStorage.getItem('mysql_database') || '',
-          user: localStorage.getItem('mysql_user') || '',
-          password: localStorage.getItem('mysql_password') || ''
-        };
-        const params = new URLSearchParams(config).toString();
-        const res = await fetch(`${localStorage.getItem('api_base_url') || ''}/api/mysql/governorates?${params}`);
-        if (res.ok) setGovernorates(await res.json());
-        else setGovernorates([]);
-      } else {
-        // جلب المحافظات من Supabase
-        const { data, error } = await supabase.from('governorates').select('*');
-        setGovernorates(data || []);
-      }
+      // Always fetch from Supabase
+      const { data, error } = await supabase.from('governorates').select('*');
+      setGovernorates(data || []);
     };
     fetchGovernorates();
   }, []);

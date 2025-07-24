@@ -75,15 +75,10 @@ const ClinicManagement: React.FC = () => {
   // تحميل المحافظات والمدن من نفس مصدر البيانات
   useEffect(() => {
     const fetchGovsAndCities = async () => {
-      if (localStorage.getItem('useLocalDb') === 'true') {
-        setGovernorates(await localDb.governorates.toArray());
-        setCities(await localDb.cities.toArray());
-      } else {
-        const { data: govs } = await supabase.from('governorates').select('*');
-        setGovernorates(govs || []);
-        const { data: cts } = await supabase.from('cities').select('*');
-        setCities(cts || []);
-      }
+      const { data: govs } = await supabase.from('governorates').select('*');
+      setGovernorates(govs || []);
+      const { data: cts } = await supabase.from('cities').select('*');
+      setCities(cts || []);
     };
     fetchGovsAndCities();
   }, []);
@@ -170,14 +165,8 @@ const ClinicManagement: React.FC = () => {
 
   const handleClearAll = async () => {
     try {
-      if (localStorage.getItem('useLocalDb') === 'true') {
-        await localDb.clinics.clear();
-        toast({ title: 'تم مسح جميع العيادات (محلياً)', description: 'تم حذف جميع العيادات من قاعدة البيانات المحلية.' });
-      } else {
-        // Supabase bulk delete
-        await Promise.all(clinics.map(c => deleteClinic(c.id)));
-        toast({ title: 'تم مسح جميع العيادات (سحابي)', description: 'تم حذف جميع العيادات من Supabase.' });
-      }
+      await Promise.all(clinics.map(c => deleteClinic(c.id)));
+      toast({ title: 'تم مسح جميع العيادات (سحابي)', description: 'تم حذف جميع العيادات من Supabase.' });
     } catch (error) {
       toast({ title: 'خطأ في المسح', description: 'حدث خطأ أثناء مسح جميع العيادات', variant: 'destructive' });
       console.error('Error clearing all clinics:', error);
@@ -231,10 +220,8 @@ const ClinicManagement: React.FC = () => {
 
   React.useEffect(() => {
     const addSampleClinics = async () => {
-      const clinicsCount = await localDb.clinics.count();
-      const govs = await localDb.governorates.toArray();
-      const cts = await localDb.cities.toArray();
-      if (clinicsCount === 0 && govs.length > 0 && cts.length > 0) {
+      const allClinicsResult = await supabase.from('clinics').select('*');
+      if (allClinicsResult.data?.length === 0) {
         const samples = [
           {
             clinic_name: 'عيادة الابتسامة',
@@ -243,10 +230,10 @@ const ClinicManagement: React.FC = () => {
             specialization: 'طب الأسنان العام',
             license_status: 'active' as 'active',
             phone: '0791234567',
-            governorate: govs[0].name,
-            city: cts.find(c => c.governorateId === govs[0].id)?.name || '',
+            governorate: 'العاصمة',
+            city: 'العاصمة',
             address_details: 'شارع الملكة رانيا، عمارة 10',
-            address: `${govs[0].name}، ${cts.find(c => c.governorateId === govs[0].id)?.name || ''}، شارع الملكة رانيا، عمارة 10`,
+            address: 'العاصمة، العاصمة، شارع الملكة رانيا، عمارة 10',
             issue_date: '2023-01-01',
             expiry_date: '2025-01-01',
             verification_count: 0,
@@ -262,10 +249,10 @@ const ClinicManagement: React.FC = () => {
             specialization: 'تقويم الأسنان',
             license_status: 'expired' as 'expired',
             phone: '0789876543',
-            governorate: govs[1]?.name || '',
-            city: cts.find(c => c.governorateId === govs[1]?.id)?.name || '',
+            governorate: 'الطفيلة',
+            city: 'الطفيلة',
             address_details: 'مقابل مستشفى المدينة',
-            address: `${govs[1]?.name || ''}، ${cts.find(c => c.governorateId === govs[1]?.id)?.name || ''}، مقابل مستشفى المدينة`,
+            address: 'الطفيلة، الطفيلة، مقابل مستشفى المدينة',
             issue_date: '2022-05-10',
             expiry_date: '2024-05-10',
             verification_count: 2,
@@ -281,10 +268,10 @@ const ClinicManagement: React.FC = () => {
             specialization: 'جراحة الفم والأسنان',
             license_status: 'pending' as 'pending',
             phone: '0775551234',
-            governorate: govs[2]?.name || '',
-            city: cts.find(c => c.governorateId === govs[2]?.id)?.name || '',
+            governorate: 'الزرقاء',
+            city: 'الزرقاء',
             address_details: 'قرب دوار الثقافة',
-            address: `${govs[2]?.name || ''}، ${cts.find(c => c.governorateId === govs[2]?.id)?.name || ''}، قرب دوار الثقافة`,
+            address: 'الزرقاء، الزرقاء، قرب دوار الثقافة',
             issue_date: '2023-03-15',
             expiry_date: '2026-03-15',
             verification_count: 1,
@@ -294,20 +281,20 @@ const ClinicManagement: React.FC = () => {
             id: crypto.randomUUID(),
           },
         ];
-        await localDb.clinics.bulkAdd(samples);
+        await supabase.from('clinics').insert(samples);
       }
       // Migration: update clinics with numeric governorate/city to names
-      const allClinics = await localDb.clinics.toArray();
+      const { data: allClinics } = await supabase.from('clinics').select('*');
       let updated = false;
-      for (const clinic of allClinics) {
+      for (const clinic of allClinics || []) {
         // If governorate or city is a number (string or number), map to name
-        const govName = govs.find(g => g.id === clinic.governorate || g.name === clinic.governorate)?.name;
-        const cityName = cts.find(c => c.id === clinic.city || c.name === clinic.city)?.name;
+        const govName = governorates.find(g => g.id === clinic.governorate || g.name === clinic.governorate)?.name;
+        const cityName = cities.find(c => c.id === clinic.city || c.name === clinic.city)?.name;
         if ((govName && clinic.governorate !== govName) || (cityName && clinic.city !== cityName)) {
-          await localDb.clinics.update(clinic.id, {
+          await supabase.from('clinics').update({
             governorate: govName || clinic.governorate,
             city: cityName || clinic.city,
-          });
+          }).eq('id', clinic.id);
           updated = true;
         }
       }

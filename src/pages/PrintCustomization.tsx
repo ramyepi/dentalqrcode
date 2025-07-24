@@ -41,46 +41,9 @@ const PrintCustomization: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // --- MySQL/Supabase config ---
-  const useMySQL = localStorage.getItem('useMySQL') === 'true';
-  const mysqlHost = localStorage.getItem('mysql_host') || 'localhost';
-  const mysqlPort = localStorage.getItem('mysql_port') || '3306';
-  const mysqlDatabase = localStorage.getItem('mysql_database') || '';
-  const mysqlUser = localStorage.getItem('mysql_user') || '';
-  const mysqlPassword = localStorage.getItem('mysql_password') || '';
-  const apiBaseUrl = localStorage.getItem('api_base_url') || '';
-
-  // --- Mutation for saving settings ---
+  // Mutation for saving settings (Supabase only)
   const updateMutation = useMutation({
     mutationFn: async (updates: { key: string; value: string }[]) => {
-      if (localStorage.getItem('useLocalDb') === 'true') {
-        const { localDb } = await import('@/lib/localDb');
-        await Promise.all(updates.map(({ key, value }) => localDb.settings.put({ key, value })));
-        return;
-      }
-      if (useMySQL) {
-        const config = {
-          host: mysqlHost,
-          port: mysqlPort,
-          database: mysqlDatabase,
-          user: mysqlUser,
-          password: mysqlPassword
-        };
-        const apiUrl = apiBaseUrl;
-        const promises = updates.map(({ key, value }) =>
-          fetch(`${apiUrl}/api/mysql/site-settings/${encodeURIComponent(key)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ value, ...config })
-          })
-        );
-        const results = await Promise.all(promises);
-        for (const res of results) {
-          if (!res.ok) throw new Error('فشل في حفظ إعدادات الطباعة في MySQL');
-        }
-        return;
-      }
-      // Supabase logic
       const { supabase } = await import('@/integrations/supabase/client');
       const promises = updates.map(({ key, value }) =>
         supabase
@@ -100,11 +63,10 @@ const PrintCustomization: React.FC = () => {
         description: 'تم تحديث إعدادات الطباعة',
       });
     },
-    onError: (error: any) => {
-      console.error('Error updating print settings:', error);
+    onError: (error) => {
       toast({
         title: 'خطأ في حفظ إعدادات الطباعة',
-        description: error.message || 'حدث خطأ أثناء تحديث إعدادات الطباعة',
+        description: 'حدث خطأ أثناء تحديث إعدادات الطباعة',
         variant: 'destructive',
       });
     },
