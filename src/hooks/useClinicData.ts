@@ -98,25 +98,35 @@ export const useVerifyLicense = () => {
     const normalizedLicense = licenseNumber.trim().toUpperCase();
     let clinic = null;
     let verificationStatus: 'success' | 'failed' | 'not_found' = 'not_found';
+
+    // البحث في Supabase
     const { data, error } = await supabase
       .from("clinics")
       .select("*")
-      .eq("license_number", normalizedLicense)
-      .maybeSingle();
-    clinic = data;
-    verificationStatus = clinic ? 'success' : 'not_found';
+      .eq("license_number", normalizedLicense);
+
+    if (error) {
+      verificationStatus = 'failed';
+    } else if (data && data.length > 0) {
+      clinic = data[0];
+      verificationStatus = 'success';
+    } else {
+      verificationStatus = 'not_found';
+    }
+
     // تسجيل محاولة التحقق (دائماً في السحابة)
     try {
       await supabase
-      .from("verifications")
-      .insert({
-        clinic_id: clinic?.id,
+        .from("verifications")
+        .insert({
+          clinic_id: clinic?.id,
           license_number: normalizedLicense,
-        verification_method: method,
-        verification_status: verificationStatus,
-        user_agent: navigator.userAgent,
-      });
+          verification_method: method,
+          verification_status: verificationStatus,
+          user_agent: navigator.userAgent,
+        });
     } catch (e) {}
+
     const typedClinic = clinic ? {
       ...clinic,
       license_status: clinic.license_status as 'active' | 'expired' | 'suspended' | 'pending'
