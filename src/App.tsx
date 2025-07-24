@@ -54,11 +54,21 @@ const LoadingFallback = () => (
   </div>
 );
 
+const NavBar: React.FC = () => (
+  <nav className="bg-white border-b border-gray-200 px-4 py-2 flex gap-4 items-center">
+    <a href="/" className="text-blue-600 font-semibold hover:underline">الرئيسية</a>
+    <a href="/license-check" className="text-blue-600 font-semibold hover:underline">التحقق من الترخيص</a>
+    <a href="/qr-scan" className="text-blue-600 font-semibold hover:underline">مسح QR</a>
+    <a href="/admin" className="text-blue-600 font-semibold hover:underline">دخول الإدارة</a>
+  </nav>
+);
+
 const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen w-full">
       <TooltipProvider>
         <BrowserRouter>
+          <NavBar />
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />
