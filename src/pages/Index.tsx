@@ -42,7 +42,7 @@ const Index = () => {
         status: result.status,
         licenseNumber: licenseNumber.trim()
       });
-      
+      setShowResultDialog(true); // Show result dialog after verification
       toast({
         title: "تم التحقق",
         description: result.clinic ? "تم العثور على العيادة" : "لم يتم العثور على الترخيص",
@@ -237,8 +237,6 @@ const Index = () => {
             </div>
           </div>
         </div>
-
-        {/* روابط سريعة مخفية بناءً على طلب المستخدم */}
       </div>
 
       <Footer />
