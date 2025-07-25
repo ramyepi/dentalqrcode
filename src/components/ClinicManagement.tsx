@@ -63,6 +63,7 @@ const ClinicManagement: React.FC = () => {
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [governorates, setGovernorates] = useState<{ id: string; name: string }[]>([]);
   const [cities, setCities] = useState<{ id: string; name: string; governorateId: string }[]>([]);
+  const [importProgress, setImportProgress] = useState<number | null>(null);
   
   const itemsPerPage = 10;
 
@@ -179,13 +180,14 @@ const ClinicManagement: React.FC = () => {
     if (!file) return;
     Papa.parse(file, {
       header: true,
-      skipEmptyLines: true,
       complete: async (results) => {
         try {
           const rows = results.data as any[];
-          for (const row of rows) {
-            // Map CSV fields to Clinic
-            await addClinic({
+          const chunkSize = 500;
+          let imported = 0;
+          setImportProgress(0);
+          for (let i = 0; i < rows.length; i += chunkSize) {
+            const chunk = rows.slice(i, i + chunkSize).map(row => ({
               id: crypto.randomUUID(),
               clinic_name: row['اسم العيادة'] || '',
               license_number: row['رقم الترخيص'] || '',
@@ -203,18 +205,30 @@ const ClinicManagement: React.FC = () => {
               qr_code: '',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-            });
+            }));
+            // Bulk insert using Supabase
+            const { error } = await supabase.from('clinics').insert(chunk);
+            if (error) {
+              setImportProgress(null);
+              toast({ title: 'خطأ في الاستيراد', description: error.message, variant: 'destructive' });
+              return;
+            }
+            imported += chunk.length;
+            setImportProgress(Math.min(100, Math.round((imported / rows.length) * 100)));
           }
-          toast({ title: 'تم استيراد العيادات بنجاح', description: `تم استيراد ${rows.length} عيادة من الملف.` });
+          setImportProgress(100);
+          toast({ title: 'تم استيراد العيادات بنجاح', description: `تم استيراد ${imported} عيادة من الملف.` });
+          setTimeout(() => setImportProgress(null), 2000);
         } catch (err) {
+          setImportProgress(null);
           toast({ title: 'خطأ في الاستيراد', description: 'حدث خطأ أثناء استيراد الملف', variant: 'destructive' });
         }
       },
       error: () => {
+        setImportProgress(null);
         toast({ title: 'خطأ في قراءة الملف', description: 'تعذر قراءة ملف CSV', variant: 'destructive' });
       }
     });
-    // Reset input value to allow re-uploading the same file
     e.target.value = '';
   };
 
@@ -622,6 +636,18 @@ const ClinicManagement: React.FC = () => {
               {hasActiveFilters && ' (مفلترة)'}
             </div>
           </div>
+
+          {importProgress !== null && (
+            <div className="w-full my-4">
+              <div className="bg-gray-200 rounded-full h-4">
+                <div
+                  className="bg-blue-600 h-4 rounded-full transition-all duration-300"
+                  style={{ width: `${importProgress}%` }}
+                ></div>
+              </div>
+              <div className="text-center text-sm mt-1">{importProgress}%</div>
+            </div>
+          )}
 
           <div className="rounded-md border overflow-x-auto">
             <Table className="min-w-full">
