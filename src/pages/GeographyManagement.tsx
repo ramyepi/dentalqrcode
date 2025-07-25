@@ -18,6 +18,13 @@ interface Governorate {
   name: string;
 }
 
+// تعريف نوع خاص للإدخال في Supabase
+interface SupabaseCityInsert {
+  id: string;
+  name: string;
+  governorate_id: string;
+}
+
 const GeographyManagement: React.FC = () => {
   const { toast } = useToast();
   const [governorates, setGovernorates] = useState<any[]>([]);
@@ -113,11 +120,17 @@ const GeographyManagement: React.FC = () => {
         <CardTitle className="flex items-center gap-2">
           <MapPin className="h-5 w-5" />
           الإدارة الجغرافية (المحافظات والمدن)
-          <Button variant="outline" size="sm" onClick={() => {
+          <Button variant="outline" size="sm" onClick={async () => {
             const govs = jordanGovernorates.map(gov => ({ id: String(gov.id), name: gov.name }));
-            const cts = jordanGovernorates.flatMap(gov => gov.cities.map(city => ({ id: String(city.id), name: city.name, governorateId: String(gov.id) })));
-            supabase.from('governorates').insert(govs).select();
-            supabase.from('cities').insert(cts).select();
+            const cts: SupabaseCityInsert[] = jordanGovernorates.flatMap(gov =>
+              gov.cities.map(city => ({
+                id: String(city.id),
+                name: city.name,
+                governorate_id: String(gov.id) // استخدم snake_case
+              }))
+            );
+            await supabase.from('governorates').insert(govs);
+            await supabase.from('cities').insert(cts);
             toast({ title: 'تم استيراد محافظات ومدن الأردن' });
           }} className="ml-auto">استيراد محافظات ومدن الأردن</Button>
         </CardTitle>

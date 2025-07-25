@@ -28,6 +28,7 @@ import { ClinicFormData } from '@/hooks/useClinicCRUD';
 import { Clinic } from '@/types/clinic';
 import { localDb } from '@/lib/localDb';
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const formSchema = z.object({
   clinic_name: z.string().min(1, 'اسم العيادة مطلوب'),
@@ -60,7 +61,7 @@ const ClinicForm: React.FC<ClinicFormProps> = ({
   const { toast } = useToast();
   const { data: specializations, isLoading: specializationsLoading } = useSpecializations();
   const [governorates, setGovernorates] = useState<{ id: string; name: string }[]>([]);
-  const [cities, setCities] = useState<{ id: string; name: string; governorateId: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; governorate_id: string }[]>([]);
   const [qrCodeData, setQRCodeData] = useState<string>('');
   const didSetInitial = useRef(false);
 
@@ -81,29 +82,28 @@ const ClinicForm: React.FC<ClinicFormProps> = ({
     },
   });
 
-  // Load governorates and cities from localDb
+  // جلب المحافظات والمدن من Supabase
   useEffect(() => {
-    const load = async () => {
-      const govs = await localDb.governorates.toArray();
-      const cts = await localDb.cities.toArray();
-      setGovernorates(govs);
-      setCities(cts);
-      // If editing, prefer id if available, otherwise map from name
+    const fetchGeography = async () => {
+      const { data: govs } = await supabase.from('governorates').select('*');
+      const { data: cts } = await supabase.from('cities').select('*');
+      setGovernorates(govs || []);
+      setCities(cts || []);
+      // If editing, set initial values by id
       if (clinic && mode === 'edit') {
-        let govId = clinic.governorate_id || '';
-        let cityId = clinic.city_id || '';
+        let govId = (clinic as any)['governorate_id'] || clinic.governorate || '';
+        let cityId = (clinic as any)['city_id'] || clinic.city || '';
         if (!govId && clinic.governorate) {
-          govId = govs.find(g => g.name.trim().toLowerCase() === (clinic.governorate || '').trim().toLowerCase())?.id || '';
+          govId = (govs || []).find(g => g.name.trim().toLowerCase() === (clinic.governorate || '').trim().toLowerCase())?.id || '';
         }
         if (!cityId && clinic.city) {
-          cityId = cts.find(c => c.name.trim().toLowerCase() === (clinic.city || '').trim().toLowerCase() && c.governorateId === govId)?.id || '';
+          cityId = (cts || []).find(c => c.name.trim().toLowerCase() === (clinic.city || '').trim().toLowerCase() && c.governorate_id === govId)?.id || '';
         }
         form.setValue('governorate', govId);
         form.setValue('city', cityId);
       }
     };
-    load();
-    // Reset flag when dialog closes
+    fetchGeography();
     return () => { didSetInitial.current = false; };
   }, [clinic, mode]);
 
@@ -128,13 +128,15 @@ const ClinicForm: React.FC<ClinicFormProps> = ({
       ...data,
       governorate: gov?.name || '',
       city: city?.name || '',
+      governorate_id: gov?.id || '',
+      city_id: city?.id || '',
       address: fullAddress
     };
-    console.log('Form submitted with data:', submissionData);
     onSubmit(submissionData);
   };
 
-  const availableCities = cities.filter(city => city.governorateId === selectedGovernorate);
+  // تعديل فلترة المدن لدعم كلا الحقلين governorate_id و governorateId
+  const availableCities = cities.filter(city => city.governorate_id === selectedGovernorate);
 
   return (
     <>
@@ -335,7 +337,7 @@ const ClinicForm: React.FC<ClinicFormProps> = ({
                 <Select 
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedGovernorate}
+                  disabled={!selectedGovernorate || availableCities.length === 0}
                 >
                   <FormControl>
                     <SelectTrigger>

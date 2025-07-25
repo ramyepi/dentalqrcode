@@ -20,18 +20,6 @@ const AnalyticsReport: React.FC = () => {
     fetchGovernorates();
   }, []);
 
-  // 1. إضافة حالة للمدن
-  const [cities, setCities] = useState<{ id: string; name: string; governorate_id: string }[]>([]);
-
-  // 2. جلب المدن من Supabase
-  useEffect(() => {
-    const fetchCities = async () => {
-      const { data, error } = await supabase.from('cities').select('*');
-      setCities(data || []);
-    };
-    fetchCities();
-  }, []);
-
   const analytics = useMemo(() => {
     const today = new Date();
     const thirtyDaysFromNow = new Date();
@@ -53,16 +41,14 @@ const AnalyticsReport: React.FC = () => {
 
     // Geographical distribution (by governorate and city)
     const governorateDistribution = clinics.reduce((acc, clinic) => {
-      const govId = (clinic as any)['governorate_id'];
-      if (!govId) return acc;
-      acc[govId] = (acc[govId] || 0) + 1;
+      if (!clinic.governorate) return acc;
+      acc[clinic.governorate] = (acc[clinic.governorate] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     const cityDistribution = clinics.reduce((acc, clinic) => {
-      const cityId = (clinic as any)['city_id'];
-      if (!cityId) return acc;
-      acc[cityId] = (acc[cityId] || 0) + 1;
+      if (!clinic.city) return acc;
+      acc[clinic.city] = (acc[clinic.city] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -145,15 +131,14 @@ const AnalyticsReport: React.FC = () => {
   const filteredCityData = useMemo(() => {
     let filteredClinics = clinics;
     if (selectedGov !== 'all') {
-      const govId = governorates.find(g => g.id === selectedGov)?.id;
-      filteredClinics = clinics.filter(clinic => (clinic as any)['governorate_id'] === govId);
+      const govName = governorates.find(g => g.id === selectedGov)?.name;
+      filteredClinics = clinics.filter(clinic => clinic.governorate === govName);
     }
     const total = filteredClinics.length;
     const cityDist: Record<string, number> = {};
     filteredClinics.forEach(clinic => {
-      const cityId = (clinic as any)['city_id'];
-      if (cityId) {
-        cityDist[cityId] = (cityDist[cityId] || 0) + 1;
+      if (clinic.city) {
+        cityDist[clinic.city] = (cityDist[clinic.city] || 0) + 1;
       }
     });
     return Object.entries(cityDist)
@@ -173,21 +158,21 @@ const AnalyticsReport: React.FC = () => {
   const filteredCitiesForSpec = useMemo(() => {
     if (selectedGovForSpec === 'all') {
       // كل المدن من جميع المحافظات
-      return Array.from(new Set(clinics.map(c => (c as any)['city_id']).filter(Boolean)));
+      return Array.from(new Set(clinics.map(c => c.city).filter(Boolean)));
     }
-    const govId = governorates.find(g => g.id === selectedGovForSpec)?.id;
-    return Array.from(new Set(clinics.filter(c => (c as any)['governorate_id'] === govId).map(c => (c as any)['city_id']).filter(Boolean)));
+    const govName = governorates.find(g => g.id === selectedGovForSpec)?.name;
+    return Array.from(new Set(clinics.filter(c => c.governorate === govName).map(c => c.city).filter(Boolean)));
   }, [selectedGovForSpec, clinics, governorates]);
 
   // تصفية العيادات حسب المحافظة والمدينة
   const filteredClinicsForSpec = useMemo(() => {
     let filtered = clinics;
     if (selectedGovForSpec !== 'all') {
-      const govId = governorates.find(g => g.id === selectedGovForSpec)?.id;
-      filtered = filtered.filter(c => (c as any)['governorate_id'] === govId);
+      const govName = governorates.find(g => g.id === selectedGovForSpec)?.name;
+      filtered = filtered.filter(c => c.governorate === govName);
     }
     if (selectedCityForSpec !== 'all') {
-      filtered = filtered.filter(c => (c as any)['city_id'] === selectedCityForSpec);
+      filtered = filtered.filter(c => c.city === selectedCityForSpec);
     }
     return filtered;
   }, [clinics, selectedGovForSpec, selectedCityForSpec, governorates]);
@@ -257,15 +242,9 @@ const AnalyticsReport: React.FC = () => {
   const renderPieTooltip = (labelKey, valueKey = 'count', percentKey = 'percentage', labelTitle = 'التصنيف') => ({ active, payload }) => {
     if (active && payload && payload.length) {
       const d = payload[0].payload;
-      let displayLabel = d[labelKey];
-      if (labelTitle === 'المحافظة') {
-        displayLabel = governorates.find(g => g.id === d[labelKey])?.name || d[labelKey];
-      } else if (labelTitle === 'المدينة') {
-        displayLabel = cities.find(c => c.id === d[labelKey])?.name || d[labelKey];
-      }
       return (
         <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 8, padding: 12, textAlign: 'right', minWidth: 120 }}>
-          <div><strong>{labelTitle}:</strong> {displayLabel}</div>
+          <div><strong>{labelTitle}:</strong> {d[labelKey]}</div>
           <div><strong>عدد العيادات:</strong> {d[valueKey]} عيادة</div>
           <div><strong>النسبة:</strong> %{d[percentKey]}</div>
         </div>
@@ -473,7 +452,7 @@ const AnalyticsReport: React.FC = () => {
                     className="w-3 h-3 rounded-full" 
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   ></div>
-                  <span className="text-sm">{governorates.find(g => g.id === item.name)?.name || item.name}: {item.count} ({item.percentage}%)</span>
+                  <span className="text-sm">{item.name}: {item.count} ({item.percentage}%)</span>
                 </div>
               ))}
             </div>
@@ -538,7 +517,7 @@ const AnalyticsReport: React.FC = () => {
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     ></div>
-                    <span className="text-sm">{cities.find(c => c.id === item.name)?.name || item.name}: {item.count} ({item.percentage}%)</span>
+                    <span className="text-sm">{item.name}: {item.count} ({item.percentage}%)</span>
                   </div>
                 ))}
               </div>
@@ -582,7 +561,7 @@ const AnalyticsReport: React.FC = () => {
                 >
                   <option value="all">كل المدن</option>
                   {filteredCitiesForSpec.map(city => (
-                    <option key={city} value={city}>{cities.find(c => c.id === city)?.name || city}</option>
+                    <option key={city} value={city}>{city}</option>
                   ))}
                 </select>
               </div>
@@ -648,7 +627,7 @@ const AnalyticsReport: React.FC = () => {
             <div className="space-y-2">
               {analytics.geographicalData.slice(0, 10).map((item, index) => (
                 <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <span className="font-medium">{governorates.find(g => g.id === item.name)?.name || item.name}</span>
+                  <span className="font-medium">{item.name}</span>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{item.count} عيادة</Badge>
                     <span className="text-sm text-gray-600">%{item.percentage}</span>
@@ -738,4 +717,4 @@ const AnalyticsReport: React.FC = () => {
   );
 };
 
-export default AnalyticsReport;
+export default AnalyticsReport; 

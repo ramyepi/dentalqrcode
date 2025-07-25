@@ -139,3 +139,31 @@ export const useVerifyLicense = () => {
   };
   return { verifyLicense };
 };
+
+// دالة تحديث معرفات المحافظات والمدن للعيادات القديمة
+export const updateClinicGeoIds = async () => {
+  // جلب جميع المحافظات والمدن
+  const { data: governorates } = await supabase.from('governorates').select('*');
+  const { data: cities } = await supabase.from('cities').select('*');
+  // جلب جميع العيادات
+  const { data: clinics } = await supabase.from('clinics').select('*');
+  if (!clinics) return;
+  for (const clinic of clinics) {
+    // إذا كان معرف المحافظة أو المدينة غير موجود
+    if (!(clinic as any)['governorate_id'] || !(clinic as any)['city_id']) {
+      const gov = governorates?.find(g => g.name.trim() === (clinic.governorate || '').trim());
+      const city = cities?.find(c => c.name.trim() === (clinic.city || '').trim() && ((c as any)['governorate_id'] === gov?.id));
+      // إذا وجدنا المعرفات الصحيحة
+      if (gov && city) {
+        await supabase.from('clinics').update({
+          governorate_id: gov.id,
+          city_id: city.id
+        } as any).eq('id', clinic.id);
+      } else if (gov) {
+        await supabase.from('clinics').update({
+          governorate_id: gov.id
+        } as any).eq('id', clinic.id);
+      }
+    }
+  }
+};

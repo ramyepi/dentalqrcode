@@ -86,7 +86,7 @@ const ClinicManagement: React.FC = () => {
   // تحديث قائمة المدن عند تغيير المحافظة
   const filteredCities = useMemo(() => {
     if (governorateFilter === 'all') return cities;
-    return cities.filter(c => c.governorateId === governorateFilter);
+    return cities.filter(city => ((city as any)['governorate_id'] || (city as any)['governorateId']) === governorateFilter);
   }, [governorateFilter, cities]);
 
   // تعديل الفلترة لتشمل المحافظة والمدينة
@@ -594,20 +594,14 @@ const ClinicManagement: React.FC = () => {
                 )}
                 {governorateFilter !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
-                    المحافظة: {governorateFilter}
-                    <X 
-                      className="h-3 w-3 cursor-pointer" 
-                      onClick={() => setGovernorateFilter('all')}
-                    />
+                    المحافظة: {governorates.find(g => g.id === governorateFilter)?.name || governorateFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setGovernorateFilter('all')} />
                   </Badge>
                 )}
                 {cityFilter !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
-                    المدينة: {cityFilter}
-                    <X 
-                      className="h-3 w-3 cursor-pointer" 
-                      onClick={() => setCityFilter('all')}
-                    />
+                    المدينة: {cities.find(c => c.id === cityFilter)?.name || cityFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setCityFilter('all')} />
                   </Badge>
                 )}
                 {searchTerm && (

@@ -99,17 +99,17 @@ export type Database = {
         Row: {
           id: string;
           name: string;
-          governorateId: string;
+          governorate_id: string;
         };
         Insert: {
           id?: string;
           name: string;
-          governorateId: string;
+          governorate_id: string;
         };
         Update: {
           id?: string;
           name?: string;
-          governorateId?: string;
+          governorate_id?: string;
         };
         Relationships: [];
       },
